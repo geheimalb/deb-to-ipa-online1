@@ -1,3 +1,51 @@
-   defaults:
-     run:
-       working-directory: MofaNavi-GitHub/MofaNavi
+name: Build IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: MofaNavi-GitHub/MofaNavi
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode-Version anzeigen
+        run: xcodebuild -version
+
+      - name: Dateien anzeigen
+        run: ls -la
+
+      - name: XcodeGen installieren
+        run: brew install xcodegen
+
+      - name: Xcode-Projekt aus project.yml erzeugen
+        run: xcodegen generate
+
+      - name: Bauen (ohne Signatur)
+        run: |
+          xcodebuild -project MofaNavi.xcodeproj \
+            -scheme MofaNavi \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: IPA packen
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/MofaNavi.app Payload/
+          zip -r MofaNavi.ipa Payload
+
+      - name: IPA hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: MofaNavi-ipa
+          path: MofaNavi-GitHub/MofaNavi/MofaNavi.ipa
